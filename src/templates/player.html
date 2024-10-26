@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HLS Video Player</title>
+    <link href="https://unpkg.com/video.js@7.21.1/dist/video-js.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/video.js@7.21.1/dist/video.min.js"></script>
+    <script src="https://unpkg.com/@videojs/http-streaming@3.0.0/dist/videojs-http-streaming.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .video-js {
+            width: 100%;
+            aspect-ratio: 16/9;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .stat-item {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HLS Video Stream</h1>
+        <div class="video-container">
+            <video id="player" class="video-js vjs-default-skin vjs-big-play-centered">
+                <source src="http://localhost:8080/stream.m3u8" type="application/x-mpegURL">
+            </video>
+        </div>
+        <div class="stats">
+            <h2>Stream Statistics</h2>
+            <div id="statsContent" class="stats-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        var player = videojs('player', {
+            fluid: true,
+            controls: true,
+            autoplay: false,
+            preload: 'auto',
+            liveui: true,
+            html5: {
+                vhs: {
+                    overrideNative: true,
+                    enableLowInitialPlaylist: true,
+                    limitRenditionByPlayerDimensions: false,
+                    smoothQualityChange: false
+                }
+            }
+        });
+
+        // Update stats
+        function updateStats() {
+            fetch('http://localhost:8080/stats')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const statsHtml = `
+                        <div class="stat-item">
+                            <div class="stat-label">Video Frames</div>
+                            <div class="stat-value">${data.processed_video_frames}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Audio Frames</div>
+                            <div class="stat-value">${data.processed_audio_frames}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Video FPS</div>
+                            <div class="stat-value">${data.video_fps.toFixed(2)}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Audio FPS</div>
+                            <div class="stat-value">${data.audio_fps.toFixed(2)}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Errors</div>
+                            <div class="stat-value">${data.encoding_errors}</div>
+                        </div>
+                    `;
+                    document.getElementById('statsContent').innerHTML = statsHtml;
+                })
+                .catch(error => {
+                    console.error('Error fetching stats:', error);
+                    document.getElementById('statsContent').innerHTML = '<p>Error loading statistics</p>';
+                });
+        }
+
+        // Update stats every 5 seconds
+        setInterval(updateStats, 5000);
+        updateStats();
+    </script>
+</body>
+</html>

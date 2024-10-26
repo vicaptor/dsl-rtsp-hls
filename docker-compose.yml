@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  hls:
+    build: .
+    ports:
+      - "${RTSP_SERVER_PORT:-8554}:8554"  # RTSP port
+      - "${HLS_SERVER_PORT:-8080}:8080"   # HLS port
+    env_file:
+      - .env
+    environment:
+      # RTSP Configuration
+      - INPUT_RTSP=${INPUT_RTSP}
+      - RTSP_TRANSPORT=${RTSP_TRANSPORT:-tcp}
+      - RTSP_TIMEOUT=${RTSP_TIMEOUT:-5000000}
+
+      # HLS Configuration
+      - OUTPUT_HLS=${OUTPUT_HLS}
+      - HLS_SEGMENT_DURATION=${HLS_SEGMENT_DURATION:-4}
+      - HLS_PLAYLIST_SIZE=${HLS_PLAYLIST_SIZE:-5}
+
+      # Video Configuration
+      - VIDEO_WIDTH=${VIDEO_WIDTH:-1280}
+      - VIDEO_HEIGHT=${VIDEO_HEIGHT:-720}
+      - VIDEO_FPS=${VIDEO_FPS:-30}
+      - VIDEO_CODEC=${VIDEO_CODEC:-h264}
+      - VIDEO_PRESET=${VIDEO_PRESET:-ultrafast}
+      - VIDEO_BITRATES=${VIDEO_BITRATES:-2000000,1000000,500000}
+      - VIDEO_KEYFRAME_INTERVAL=${VIDEO_KEYFRAME_INTERVAL:-60}
+
+      # Audio Configuration
+      - AUDIO_CODEC=${AUDIO_CODEC:-aac}
+      - AUDIO_SAMPLE_RATE=${AUDIO_SAMPLE_RATE:-44100}
+      - AUDIO_BITRATES=${AUDIO_BITRATES:-128000,64000}
+      - AUDIO_CHANNELS=${AUDIO_CHANNELS:-2}
+
+      # Server Configuration
+      - ENABLE_STATS=${ENABLE_STATS:-true}
+
+      # Buffer Configuration
+      - MAX_BUFFER_SIZE=${MAX_BUFFER_SIZE:-60}
+
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENABLE_DEBUG=${ENABLE_DEBUG:-false}
+
+    volumes:
+      - ./hls_output:/app/hls_output
+    restart: unless-stopped
+    networks:
+      - hls_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/player"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  hls_network:
+    driver: bridge
